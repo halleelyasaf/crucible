@@ -5,9 +5,12 @@
     secure: false
     ASSISTED_INSTALLER_BASE_URL: "{{ secure | ternary('https', 'http') }}://{{ hostvars['assisted_installer']['host'] }}:{{ hostvars['assisted_installer']['port'] }}/api/assisted-install/v1"
     URL_ASSISTED_INSTALLER_CLUSTER: "{{ ASSISTED_INSTALLER_BASE_URL }}/clusters/{{ cluster_id }}"
-    kube_filename: "{{ kubeconfig_dest_filename | default('kubeconfig') }}"
+    kube_filename: "{{ kubeconfig_dest_filename | default(cluster_name + '-kubeconfig') }}"
     dest_dir: "{{ kubeconfig_dest_dir | default(ansible_env.HOME) }}"
     kubeconfig_path: "{{ dest_dir }}/{{ kube_filename }}"
+    kubeadmin_vault_name: "{{ kubeadmin_dest_filename | default(cluster_name +'-kubeadmin.vault.yml') }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
   tasks:
     - name: Download kubeconfig
       get_url:
@@ -15,18 +18,18 @@
         dest: "{{ kubeconfig_path }}"
         mode: 0664
 
-    - name: Check kubectl
+    - name: Perform simple connectivity check with oc
       shell:
-        cmd: "kubectl --kubeconfig {{ kubeconfig_path }} explain pods"
+        cmd: "oc explain pods"
 
-    - name: Check cluster
+    - name: Check status of cluster operators
       block:
-        - name: Wait up to 10 mins for cluster to become functional
+        - name: Wait up to 20 mins for cluster to become functional
           shell:
-            cmd: oc --kubeconfig {{ kubeconfig_path }} wait clusteroperators --all --for=condition=Available --timeout=10m
+            cmd: oc wait clusteroperators --all --for=condition=Available --timeout=20m
       rescue:
         - name: Get better info for failure message
-          shell: oc --kubeconfig {{ kubeconfig_path }} get co
+          shell: oc get clusteroperators
           register: co_result
 
         - fail:
@@ -42,4 +45,14 @@
 
     - name: Login to add token to kubeconfig
       shell:
-        cmd: "oc --kubeconfig {{ kubeconfig_path }} login -u {{ credentials.json.username }} -p '{{ credentials.json.password }}'"
+        cmd: "oc login -u {{ credentials.json.username }} -p '{{ credentials.json.password }}'"
+
+    - name: Save credentials to file
+      copy:
+        content: "{{ credentials.json | to_yaml }}"
+        dest: "{{ dest_dir }}/{{ kubeadmin_vault_name }}"
+
+    - name: Save credentials to vault
+      shell:
+        cmd: "ansible-vault encrypt --vault-password-file {{ kubeadmin_vault_password_file_path }} {{ dest_dir }}/{{ kubeadmin_vault_name }}"
+      when: (kubeadmin_vault_password_file_path is defined) and (kubeadmin_vault_password_file_path is file)

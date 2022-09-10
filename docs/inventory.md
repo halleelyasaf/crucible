@@ -20,8 +20,20 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ### Cluster config checks:
 
+#### Highly Available OpenShift cluster node checks
+
 - 3 or more master nodes
 - 2 or more, or 0 worker nodes
+
+#### Single Node OpenShift cluster node checks
+
+- 1 master node
+- 0 worker nodes
+
+Single Node OpenShift requires the API and Ingress VIPs to be set to the IP address (`ansible_host`) of the master node.
+
+In addition to that, the following checks must be met for both HA and SNO deployments:
+
 - every node has required vars:
   - `bmc_address`
   - `bmc_password`
@@ -206,6 +218,7 @@ Use the following vars to control setup of prerequisites:
 - `setup_dns_service`
 - `create_vms`
 - `setup_sushy_tools`
+- `setup_pxe_service`
 
 Note that if one or more of these services is pre-existing in your environment the inventory must still be configured with information needed to access those services, even when the service is not being set up by the playbooks.
 
@@ -405,7 +418,63 @@ The basic network configuration of the inventory for the fully bare metal deploy
           bmc_address: 172.30.10.7
           # ...
 ```
+## Additional Partition Deployment
 
+For OCP 4.8+ deployments you can set partitions if required on the nodes. You do this by adding the snippet below to the node defination. Please ensure you provide the correct label and size(MiB) for the additional partitions you want to create. The device can either be the drive in which RHCOS image needs to be installed or it can be any additional drive on the node that requires partitioning. In the case that the device is equal to the host's `installation_disk_path` then a partition will be added defined by `disks_rhcos_root`. All additional partitions must be added under `extra_partitions` key as per the example below.
+
+```yaml
+disks:
+  - device: "{{ installation_disk_path }}"
+    extra_partitions:
+      partition_1: 1024
+      partition_2: 1024
+ ```     
+
+## PXE Deployment
+You must have these services when using PXE deployment
+- `DHCP`
+- `DNS`
+- `PXE`
+```
+       masters:
+          vars:
+            role: master
+            vendor: pxe # this example is a PXE control plane
+          hosts:
+            super1:
+              ansible_host: 10.60.0.101
+              mac: "DE:AD:BE:EF:C0:2C"
+              bmc_address: "192.168.10.16"
+
+
+            super2:
+              ansible_host: 10.60.0.102
+              mac: "DE:AD:BE:EF:C0:2D"
+              bmc_address: "192.168.10.17"
+
+
+            super3:
+              ansible_host: 10.60.0.103
+              mac: "DE:AD:BE:EF:C0:2E"
+              bmc_address: "192.168.10.18"
+
+        workers:
+          vars:
+            role: worker
+          hosts:
+            worker1:
+              ansible_host: 10.60.0.104
+              bmc_address: 192.168.10.19
+              mac: 3c:fd:fe:b5:79:04
+              vendor: pxe
+            worker2:
+              ansible_host: 10.60.0.105
+              bmc_address: 192.168.10.20
+              mac: "DE:AD:BE:EF:C0:2F"
+              vendor: pxe
+              bmc_address: "nfvpe-21.oot.lab.eng.bos.redhat.com:8082"
+   
+```
 > **Note**: that the BMCs of the nodes in the cluster must be routable from the bastion host and the HTTP Store must be routable from the BMCs
 
 These two examples are not the only type of clusters that can be deployed using Crucible. A hybrid cluster can be created by mixing virtual and bare metal nodes.

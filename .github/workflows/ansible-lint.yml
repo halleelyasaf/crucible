@@ -11,14 +11,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Setup Python
-        uses: actions/setup-python@v2.3.1
+        uses: actions/setup-python@v3
         with:
           python-version: 3.6
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ${{ env.pythonLocation }}
           key: ${{ env.pythonLocation }}-${{ hashFiles('**/requirements.txt') }}

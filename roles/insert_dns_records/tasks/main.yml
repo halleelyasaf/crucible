@@ -13,12 +13,18 @@
       }
     )
     }}"
-  loop: "{{ groups['masters'] + groups['workers'] | default([]) }}"
+  loop: "{{ groups['nodes'] }}"
   when: hostvars[item][host_ip_keyword] is defined
 
 - name: Configure firewall
   become: true
   import_tasks: configure_firewall.yml
+
+- name: Install dnsmasq
+  become: true
+  ansible.builtin.package:
+    name: dnsmasq
+    state: present
 
 - name: Configure dnsmasq via NetworkManager
   become: true

@@ -7,6 +7,8 @@ An OpenShift cluster is about to be deployed. Please double check the provided i
 
   {{ row_format_str | format('OpenShift version', inventory.openshift_full_version) }}
 
+  {{ row_format_str | format('Kube admin vault password file', inventory.kubeadmin_vault_password_file_path) }}
+
 * Cluster network configuration
 
   {{ row_format_str | format('API Virtual IP', inventory.api_vip) }}
@@ -21,11 +23,14 @@ An OpenShift cluster is about to be deployed. Please double check the provided i
   {{ row_format_str | format('Setup Registry Service', inventory.setup_registry_service) }}
   {{ row_format_str | format('Setup HTTP Store Service', inventory.setup_http_store_service) }}
   {{ row_format_str | format('Setup Assisted Installer', inventory.setup_assisted_installer) }}
+  {{ row_format_str | format('Setup PXE Service', inventory.setup_pxe_service) }}
 
   {{ row_format_str | format('Discovery ISO Name', inventory.discovery_iso_name) }}
   {{ row_format_str | format('Discovery ISO Download Path', inventory.discovery_iso_download_path) }}
 
 * Groups and hosts configuration
+
+  {{ row_format_str | format('Single Node OpenShift (SNO) Mode', inventory.is_valid_single_node_openshift_config) }}
 
 {% for group_name in inventory.groups_filtered %}
   {{ group_name }}:
